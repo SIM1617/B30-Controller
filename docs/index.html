@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B30 Controller — خرید لایسنس</title>
+<style>
+:root{--bg:#0F172A;--card:#1E293B;--line:#334155;--pri:#2563EB;--pri2:#1D4ED8;--ok:#10B981;--muted:#94A3B8;--text:#F1F5F9}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Tahoma,sans-serif;background:linear-gradient(135deg,#0F172A,#1E293B);color:var(--text);min-height:100vh}
+.wrap{max-width:980px;margin:0 auto;padding:28px 18px}
+.top{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.brand{display:flex;gap:14px;align-items:center}
+.logo{width:52px;height:52px;border-radius:14px;background:#0F172A;border:1px solid #334155;display:grid;place-items:center;font-weight:900;color:#60A5FA}
+h1{margin:0;font-size:22px} .sub{color:var(--muted);font-size:13px;margin-top:4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.plan{border:1px solid var(--line);border-radius:16px;padding:16px;background:rgba(255,255,255,.02)}
+.plan h3{margin:0 0 6px 0}
+.price{font-size:22px;font-weight:900;color:#60A5FA}
+.feat{color:var(--muted);font-size:13px;line-height:1.9;margin:10px 0 14px 0}
+.btn{appearance:none;border:0;border-radius:12px;padding:12px 14px;font-weight:800;cursor:pointer}
+.btn-pri{background:var(--pri);color:#fff}
+.btn-pri:hover{background:var(--pri2)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.field{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:#0F172A;color:var(--text);outline:none}
+.field:focus{border-color:var(--pri)}
+.kbd{font-family:Consolas,monospace;background:#0F172A;border:1px solid var(--line);padding:6px 10px;border-radius:10px;color:#60A5FA}
+.notice{background:#0F172A;border:1px dashed #334155;border-radius:14px;padding:12px;color:var(--muted);font-size:13px;line-height:1.8}
+.small{font-size:12px;color:var(--muted)}
+a{color:#60A5FA}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="logo">B30</div>
+      <div>
+        <h1>B30 Controller</h1>
+        <div class="sub">خرید لایسنس آنلاین — پرداخت با زرین‌پال — فعال‌سازی با اینترنت</div>
+      </div>
+    </div>
+    <a class="small" href="callback.html">پیگیری پرداخت</a>
+  </div>
+
+  <div style="height:16px"></div>
+
+  <div class="card">
+    <div style="display:grid;grid-template-columns:1.2fr .8fr;gap:14px;align-items:end">
+      <div>
+        <div class="small">کد دستگاه شما (HWID)</div>
+        <div id="hwidBox" class="kbd" style="margin-top:6px;word-break:break-all">در حال خواندن…</div>
+        <input id="hwidInput" class="field" placeholder="اگر خودکار پر نشد، HWID را اینجا وارد کنید" style="margin-top:8px;display:none">
+        <div class="small" style="margin-top:8px">این کد از برنامه کپی می‌شود. اگر این صفحه را از داخل برنامه باز کرده‌اید، به صورت خودکار پر می‌شود — در غیر این صورت دستی وارد کنید.</div>
+      </div>
+      <div>
+        <div class="small">ایمیل تحویل لایسنس</div>
+        <input id="email" class="field" placeholder="name@example.com" style="margin-top:6px">
+        <div class="small" style="margin-top:8px">لایسنس به همین ایمیل هم ارسال می‌شود.</div>
+      </div>
+    </div>
+    <div class="notice" style="margin-top:14px">
+      بعد از پرداخت موفق، یک GitHub Action به صورت خودکار پرداخت را با زرین‌پال تایید می‌کند و فایل <span class="kbd">license.lic</span> مخصوص همین HWID را می‌سازد. لینک دانلود در صفحه پیگیری ظاهر می‌شود. فایل را کنار <span class="kbd">B30Controller.exe</span> بگذارید و برنامه را دوباره باز کنید.
+    </div>
+  </div>
+
+  <div style="height:14px"></div>
+
+  <div class="grid">
+    <div class="plan">
+      <h3>پایه</h3>
+      <div class="price">۱٫۵ میلیون تومان</div>
+      <div class="feat">• 1 تقاطع<br>• 6 ماه اعتبار<br>• تمدید آسان</div>
+      <button class="btn btn-pri" style="width:100%" onclick="buy('base',1500000)">انتخاب و پرداخت — پایه</button>
+    </div>
+    <div class="plan" style="border-color:#2563EB;box-shadow:0 0 0 2px rgba(37,99,235,.18)">
+      <h3>حرفه‌ای ⭐</h3>
+      <div class="price">۴٫۵ میلیون تومان</div>
+      <div class="feat">• 5 تقاطع<br>• 1 سال اعتبار<br>• پشتیبانی ویژه</div>
+      <button class="btn btn-pri" style="width:100%" onclick="buy('pro',4500000)">انتخاب و پرداخت — حرفه‌ای</button>
+    </div>
+    <div class="plan">
+      <h3>نامحدود</h3>
+      <div class="price">۹ میلیون تومان</div>
+      <div class="feat">• تقاطع نامحدود<br>• دائمی<br>• اولویت آپدیت</div>
+      <button class="btn btn-pri" style="width:100%" onclick="buy('unlimited',9000000)">انتخاب و پرداخت — نامحدود</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="small"><b>نکته:</b> اگر زرین‌پال ندارید، می‌توانید «زرین‌لینک» بسازید — هزینه ثابت — و فقط مرحله Verify در Action همان می‌ماند.</div>
+  </div>
+</div>
+
+<script>
+function getParam(n){ return new URLSearchParams(location.search).get(n) || ""; }
+
+(function init(){
+  const hwid = getParam("hwid");
+  const email = getParam("email");
+  const box = document.getElementById("hwidBox");
+  const hwidInput = document.getElementById("hwidInput");
+  if (hwid) box.textContent = hwid;
+  else {
+    const saved = (()=>{ try{return localStorage.getItem("b30_hwid")||"";}catch(e){return ""} })();
+    if(saved){ box.textContent = saved; }
+    else { box.textContent = "— HWID را از داخل برنامه کپی کنید —"; hwidInput.style.display="block"; hwidInput.placeholder="HWID را از برنامه کپی و اینجا وارد کنید (مثال: AB12-CD34-EF56)"; }
+  }
+  if (email) document.getElementById("email").value = email;
+  try { if(hwid) localStorage.setItem("b30_hwid", hwid); } catch(e){}
+  if(hwidInput){ hwidInput.addEventListener("input", ()=>{ try{localStorage.setItem("b30_hwid", hwidInput.value.trim());}catch(e){} box.textContent = hwidInput.value.trim() || "—"; }); }
+})();
+
+async function buy(plan, amount){
+  const email = document.getElementById("email").value.trim();
+  const hwidParam = getParam("hwid");
+  const hwidBox = document.getElementById("hwidBox").textContent.trim();
+  const hwid = hwidParam || (hwidBox.includes("—") ? "" : hwidBox);
+  if(!hwid || hwid.length < 6){ alert("HWID خالی است. این صفحه را از داخل برنامه (دکمه پرداخت) باز کنید یا HWID را دستی وارد کنید."); return; }
+  if(!email || !email.includes("@")){ alert("ایمیل معتبر وارد کنید."); return; }
+  try{ localStorage.setItem("b30_hwid", hwid); localStorage.setItem("b30_email", email); localStorage.setItem("b30_plan", plan); localStorage.setItem("b30_amount", String(amount)); }catch(e){}
+
+  // Start payment: call ZarinPal request via GitHub Action dispatch is not possible without PAT from browser.
+  // So we use a lightweight pattern: open ZarinPal directly via a small serverless shim.
+  // For pure GitHub Pages (no server), the simplest working flow is:
+  // 1) User pays via a ZarinLink/Amount set — we just redirect to a prebuilt ZarinLink with metadata in ?hwid
+  // 2) After pay, callback.html triggers repository_dispatch which verifies with MERCHANT_ID secret.
+  //
+  // To make it work immediately without any server, we redirect to callback simulation if you use ZarinLink:
+  // Replace ZARIN_LINK_BASE with your real ZarinLink URL.
+  const ZARIN_LINK_BASE = ""; // اگر زرین‌لینک ساختی اینجا بگذار: "https://zarinp.al/XXXXX"
+  if (ZARIN_LINK_BASE){
+    location.href = ZARIN_LINK_BASE + "?hwid=" + encodeURIComponent(hwid) + "&email=" + encodeURIComponent(email) + "&plan=" + encodeURIComponent(plan);
+    return;
+  }
+  // بدون زرین‌لینک: راهنمای اتصال مستقیم + ذخیره برای callback
+  // برای فعال‌سازی کامل، در پنل زرین‌پال یک زرین‌لینک بساز و بالا را پر کن — یا بعدا Worker اضافه کن
+  const info = "HWID و ایمیل ذخیره شد.\n\nبرای تکمیل خرید:\n1) در زرین‌پال یک زرین‌لینک برای همین مبلغ بساز\n2) ZARIN_LINK_BASE را در docs/index.html پر کن و دوباره روی گیت‌هاب پوش کن\n3) فعلا می‌توانی با پرداخت دستی و سپس \"پیگیری پرداخت\" لایسنس را بگیری.";
+  alert(info);
+  try{ localStorage.setItem("b30_pending", JSON.stringify({hwid,email,plan,amount})); }catch(e){}
+  // همچنین یک فایل کمکی برای تست لوکال: کاربر می‌تواند Authority دستی وارد کند و در callback تایید بزند
+  location.href = "callback.html?hwid=" + encodeURIComponent(hwid) + "&email=" + encodeURIComponent(email) + "&plan=" + encodeURIComponent(plan) + "&amount=" + encodeURIComponent(amount);
+}
+</script>
+</body>
+</html>

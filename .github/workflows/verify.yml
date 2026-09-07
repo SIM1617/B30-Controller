@@ -1,0 +1,100 @@
+name: Verify ZarinPal and issue license
+on:
+  repository_dispatch:
+    types: [zarinpal_verify]
+  workflow_dispatch:
+    inputs:
+      authority: { description: 'ZarinPal Authority', required: true }
+      hwid:      { description: 'HWID', required: true }
+      plan:      { description: 'plan (base/pro/unlimited)', required: false, default: 'base' }
+      email:     { description: 'buyer email', required: false }
+      amount:    { description: 'amount in Rial', required: false }
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify with ZarinPal
+        id: verify
+        env:
+          MERCHANT_ID: ${{ secrets.ZARINPAL_MERCHANT }}
+        run: |
+          AUTH="${{ github.event.client_payload.authority || inputs.authority }}"
+          HWID="${{ github.event.client_payload.hwid || inputs.hwid }}"
+          AMOUNT="${{ inputs.amount || '15000000' }}"
+          echo "Authority=$AUTH HWID=$HWID amount=$AMOUNT"
+
+          RESP=$(curl -s -X POST https://api.zarinpal.com/pg/v4/payment/verify.json \
+            -H "Content-Type: application/json" \
+            -d "{\"merchant_id\":\"$MERCHANT_ID\",\"authority\":\"$AUTH\",\"amount\":$AMOUNT}")
+
+          echo "ZarinPal response: $RESP"
+          echo "$RESP" > /tmp/zarin.json
+          CODE=$(python3 -c "import json; print(json.load(open('/tmp/zarin.json')).get('data',{}).get('code',-1))")
+          echo "code=$CODE"
+
+          if [ "$CODE" != "100" ] && [ "$CODE" != "101" ]; then
+            echo "::error::ZarinPal verify failed code=$CODE"
+            cat /tmp/zarin.json
+            exit 1
+          fi
+
+          echo "amount=$AMOUNT" >> $GITHUB_OUTPUT
+          echo "hwid=$HWID" >> $GITHUB_OUTPUT
+          echo "authority=$AUTH" >> $GITHUB_OUTPUT
+
+      - name: Install deps
+        run: pip install cryptography -q
+
+      - name: Generate license.lic
+        env:
+          PRIVATE_PEM: ${{ secrets.LICENSE_PRIVATE_PEM }}
+        run: |
+          HWID="${{ steps.verify.outputs.hwid }}"
+          PLAN="${{ inputs.plan || 'base' }}"
+
+          # expiry by plan
+          if [ "$PLAN" = "unlimited" ]; then EXP="2099-12-31"; elif [ "$PLAN" = "pro" ]; then EXP=$(date -d "+365 days" +%Y-%m-%d); else EXP=$(date -d "+180 days" +%Y-%m-%d); fi
+          echo "HWID=$HWID PLAN=$PLAN EXP=$EXP"
+
+          # write private key
+          printf "%s" "$PRIVATE_PEM" > /tmp/private.pem
+          chmod 600 /tmp/private.pem
+
+          python3 -c "
+          import json, base64, pathlib
+          from cryptography.hazmat.primitives import hashes, serialization
+          from cryptography.hazmat.primitives.asymmetric import padding
+
+          hwid='${{ steps.verify.outputs.hwid }}'
+          exp='$EXP'
+          plan='$PLAN'
+          payload = json.dumps({'hwid':hwid,'exp':exp,'plan':plan}, sort_keys=True)
+          priv = serialization.load_pem_private_key(open('/tmp/private.pem','rb').read(), password=None)
+          sig = base64.b64encode(priv.sign(payload.encode(), padding.PKCS1v15(), hashes.SHA256())).decode()
+          out = {'payload': payload, 'sig': sig}
+          pathlib.Path('licenses').mkdir(exist_ok=True)
+          pathlib.Path(f'licenses/{hwid}.lic').write_text(json.dumps(out))
+          pathlib.Path(f'licenses/{hwid}.json').write_text(json.dumps({'hwid':hwid,'exp':exp,'plan':plan,'status':'active'}))
+          print('license written for', hwid)
+          "
+
+      - name: Commit and push
+        run: |
+          git config user.name "B30 Bot"
+          git config user.email "bot@b30.local"
+          git add licenses/
+          git commit -m "issue license for ${{ steps.verify.outputs.hwid }} [skip ci]" || echo "nothing to commit"
+          git push origin gh-pages

@@ -1,0 +1,13 @@
+private.pem
+*.key
+license.lic
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+B30Controller.spec
+*.log
+crash.log
+.DS_Store
+.vscode/

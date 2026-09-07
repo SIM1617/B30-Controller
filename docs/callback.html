@@ -1,0 +1,164 @@
+﻿<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>پیگیری پرداخت — B30 Controller</title>
+<style>
+:root{--bg:#0F172A;--card:#1E293B;--line:#334155;--pri:#2563EB;--muted:#94A3B8;--text:#F1F5F9}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,sans-serif;background:linear-gradient(135deg,#0F172A,#1E293B);color:var(--text);min-height:100vh}
+.wrap{max-width:720px;margin:0 auto;padding:28px 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+.kbd{font-family:Consolas,monospace;background:#0F172A;border:1px solid var(--line);padding:6px 10px;border-radius:10px;color:#60A5FA;word-break:break-all}
+.btn{appearance:none;border:0;border-radius:12px;padding:12px 14px;font-weight:800;cursor:pointer}
+.btn-pri{background:var(--pri);color:#fff}
+.small{font-size:12px;color:var(--muted)}
+a{color:#60A5FA}
+pre{white-space:pre-wrap;word-break:break-all;background:#0F172A;border:1px solid var(--line);padding:10px;border-radius:12px;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2 style="margin:0">پیگیری پرداخت</h2>
+  <div class="small" style="margin:6px 0 14px 0">اگر از زرین‌پال برگشته‌اید، این صفحه پرداخت را تایید و لایسنس را می‌سازد.</div>
+
+  <div class="card">
+    <div class="small">Authority</div>
+    <div id="authBox" class="kbd" style="margin-top:6px">—</div>
+    <input id="authInput" class="field" placeholder="اگر خودکار پر نشد، Authority زرین‌پال را اینجا وارد کنید" style="margin-top:8px;display:none">
+    <div class="small" style="margin-top:10px">HWID</div>
+    <div id="hwidBox" class="kbd" style="margin-top:6px">—</div>
+    <input id="hwidInput" class="field" placeholder="HWID دستی" style="margin-top:8px;display:none">
+    <div class="small" style="margin-top:10px">پلن / ایمیل (از صفحه قبل)</div>
+    <div id="metaBox" class="small" style="margin-top:6px;color:var(--muted)">—</div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-pri" onclick="doVerify()">تایید پرداخت و ساخت لایسنس</button>
+      <button class="btn" style="background:transparent;border:1px solid #334155;color:var(--text)" onclick="pollLicense()">بررسی آماده بودن لایسنس</button>
+      <button class="btn" style="background:transparent;border:1px solid #334155;color:var(--text)" onclick="copyIssueText()">کپی متن برای Issue</button>
+    </div>
+    <pre id="dbg"></pre>
+    <div id="dlWrap" style="display:none;margin-top:14px">
+      <div class="small">لایسنس آماده است — دانلود:</div>
+      <a id="dl" href="#" download>دانلود license.lic</a>
+      <div class="small" style="margin-top:8px">فایل را کنار B30Controller.exe بگذارید و برنامه را دوباره باز کنید.</div>
+    </div>
+    <div id="fallbackBox" style="display:none;margin-top:12px;background:#0F172A;border:1px solid #334155;border-radius:12px;padding:12px">
+      <div class="small" style="font-weight:800;color:#F1F5F9">تایید خودکار با خطا مواجه شد (401 طبیعی است)</div>
+      <div class="small" style="margin-top:6px">این متن را کپی و در یک Issue جدید در <a href="https://github.com/SIM1617/B30-Controller/issues/new" target="_blank">B30-Controller/issues</a> پیست کنید — Action به صورت خودکار Verify و لایسنس را می‌سازد:</div>
+      <pre id="issueText" style="display:block;margin-top:8px;background:#1E293B"></pre>
+      <button class="btn btn-pri" style="margin-top:8px" onclick="copyIssueText()">کپی</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="small">راهنما</div>
+    <div class="small" style="margin-top:6px;line-height:1.8">
+      1) زرین‌پال بعد از پرداخت به این صفحه با <span class="kbd">?Authority=...&Status=OK</span> برمی‌گردد.<br>
+      2) این صفحه یک <span class="kbd">repository_dispatch</span> به GitHub می‌فرستد.<br>
+      3) Workflow با Secret های <span class="kbd">ZARINPAL_MERCHANT</span> و <span class="kbd">LICENSE_PRIVATE_PEM</span> پرداخت را Verify و فایل <span class="kbd">licenses/HWID.lic</span> را می‌سازد.<br>
+      4) همین صفحه هر 3 ثانیه آن فایل را Poll می‌کند تا دانلود ظاهر شود.
+    </div>
+  </div>
+</div>
+
+<script>
+function qp(n){ return new URLSearchParams(location.search).get(n) || ""; }
+(function init(){
+  const a = qp("Authority") || localStorage.getItem("b30_authority") || "";
+  const h = qp("hwid") || localStorage.getItem("b30_hwid") || "";
+  const plan = qp("plan") || localStorage.getItem("b30_plan") || "";
+  const email = qp("email") || localStorage.getItem("b30_email") || "";
+  const amount = qp("amount") || localStorage.getItem("b30_amount") || "";
+  if(a) document.getElementById("authBox").textContent = a; else document.getElementById("authInput").style.display="block";
+  if(h) document.getElementById("hwidBox").textContent = h; else document.getElementById("hwidInput").style.display="block";
+  const meta = [];
+  if(plan) meta.push("پلن: "+plan);
+  if(email) meta.push("ایمیل: "+email);
+  if(amount) meta.push("مبلغ: "+amount);
+  if(meta.length) document.getElementById("metaBox").textContent = meta.join(" | ");
+  try{ if(a) localStorage.setItem("b30_authority", a); if(h) localStorage.setItem("b30_hwid", h); }catch(e){}
+  const ai=document.getElementById("authInput"), hi=document.getElementById("hwidInput");
+  if(ai) ai.addEventListener("input", ()=>{ document.getElementById("authBox").textContent = ai.value.trim() || "—"; try{localStorage.setItem("b30_authority", ai.value.trim());}catch(e){} });
+  if(hi) hi.addEventListener("input", ()=>{ document.getElementById("hwidBox").textContent = hi.value.trim() || "—"; try{localStorage.setItem("b30_hwid", hi.value.trim());}catch(e){} });
+})();
+
+async function doVerify(){
+  const auth = (qp("Authority") || document.getElementById("authBox").textContent || "").trim();
+  const hwid = (qp("hwid") || document.getElementById("hwidBox").textContent || localStorage.getItem("b30_hwid") || "").trim();
+  const dbg = document.getElementById("dbg");
+  dbg.style.display = "block";
+  if(!auth || auth === "—"){ dbg.textContent = "Authority خالی است. از زرین‌پال باید با ?Authority برگردید."; return; }
+  if(!hwid || hwid === "—"){ dbg.textContent = "HWID خالی است."; return; }
+  dbg.textContent = "در حال ارسال repository_dispatch…\nAuthority=" + auth + "\nHWID=" + hwid;
+  try{
+    const res = await fetch("https://api.github.com/repos/SIM1617/B30-Controller/dispatches", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({event_type:"zarinpal_verify", client_payload:{authority:auth, hwid:hwid}})
+    });
+    dbg.textContent += "\nHTTP " + res.status + " " + res.statusText + "\n";
+    if(res.status === 204 || res.status === 200){
+      dbg.textContent += "ارسال شد — در حال ساخت لایسنس (30 ثانیه)…";
+      let tries=0;
+      const t=setInterval(async()=>{
+        tries++;
+        try{
+          const r=await fetch("licenses/" + encodeURIComponent(hwid) + ".lic?ts=" + Date.now(), {cache:"no-store"});
+          if(r.ok){
+            clearInterval(t);
+            const blob=await r.blob();
+            const url=URL.createObjectURL(blob);
+            const a=document.getElementById("dl");
+            a.href=url; a.download=hwid+".lic";
+            document.getElementById("dlWrap").style.display="block";
+            dbg.textContent += "\nلایسنس آماده شد ✓";
+          } else if(tries>25){
+            clearInterval(t);
+            dbg.textContent += "\nهنوز آماده نشده — Authority را در یک Issue پیست کنید.";
+          }
+        }catch(e){}
+      },3000);
+    } else {
+      const txt = await res.text();
+      dbg.textContent += txt + "\n\nاگر 401 دیدید: این طبیعی است (مرورگر PAT ندارد).";
+      showFallback(auth, hwid);
+    }
+  }catch(e){
+    dbg.textContent += "\nخطا: " + e.message;
+    showFallback(auth, hwid);
+  }
+}
+function showFallback(auth, hwid){
+  const plan=(qp("plan")||localStorage.getItem("b30_plan")||"base").trim();
+  const email=(qp("email")||localStorage.getItem("b30_email")||"").trim();
+  const amount=(qp("amount")||localStorage.getItem("b30_amount")||"1500000").trim();
+  const txt = "Authority: "+auth+"\nHWID: "+hwid+"\nPlan: "+plan+"\nEmail: "+email+"\nAmount: "+amount;
+  document.getElementById("issueText").textContent = txt;
+  document.getElementById("fallbackBox").style.display="block";
+}
+function copyIssueText(){
+  const t=document.getElementById("issueText").textContent;
+  if(!t || t.trim()==="—"){ alert("هنوز متنی برای کپی نیست."); return; }
+  navigator.clipboard.writeText(t).then(()=>alert("کپی شد ✓\nحالا در Issues پیست کن.")).catch(()=>{ const ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); alert("کپی شد ✓"); });
+}
+
+async function pollLicense(){
+  const hwid=(qp("hwid")||document.getElementById("hwidBox").textContent||localStorage.getItem("b30_hwid")||"").trim();
+  const dbg=document.getElementById("dbg");
+  dbg.style.display="block";
+  if(!hwid||hwid==="—"){dbg.textContent="HWID خالی است.";return;}
+  dbg.textContent="Poll licenses/"+hwid+".lic …";
+  try{
+    const r=await fetch("licenses/"+encodeURIComponent(hwid)+".lic?ts="+Date.now(),{cache:"no-store"});
+    dbg.textContent += "\nHTTP "+r.status;
+    if(r.ok){
+      const blob=await r.blob(); const url=URL.createObjectURL(blob);
+      const a=document.getElementById("dl"); a.href=url; a.download=hwid+".lic";
+      document.getElementById("dlWrap").style.display="block";
+      dbg.textContent += "\nآماده ✓";
+    } else dbg.textContent += "\nهنوز آماده نشده.";
+  }catch(e){ dbg.textContent += "\n"+e.message; }
+}
+</script>
+</body>
+</html>
